@@ -1,14 +1,14 @@
-# UnitWise
+# UnitScope (WIP)
 
-UnitWise is a local analog circuit analysis tool for SPICE/CDL-style netlists.
+UnitScope is a local analog circuit analysis tool for SPICE/CDL-style netlists.
 
 It parses an analog netlist, detects common circuit building blocks, runs explainable robustness checks, and ranks potential weak points so designers can review fragile parts of a circuit faster.
 
-The goal is not to replace SPICE simulation or expert analog review. UnitWise is intended to act as an early-stage static review assistant for analog IC designers, EDA engineers, and circuit reviewers.
+The goal is not to replace SPICE simulation or expert analog review. UnitScope is intended to act as an early-stage static review assistant for analog IC designers, EDA engineers, and circuit reviewers.
 
 ## What It Does
 
-UnitWise analyzes text-based netlists such as:
+UnitScope analyzes text-based netlists such as:
 
 - `.sp`
 - `.cdl`
@@ -65,11 +65,11 @@ Large analog netlists can be difficult to inspect manually. A designer may need 
 - Are there stacked devices with headroom risk?
 - Which units should be reviewed first?
 
-UnitWise gives a first-pass explanation instead of only raw connectivity.
+UnitScope gives a first-pass explanation instead of only raw connectivity.
 
 ## Input Format
 
-UnitWise expects a netlist, not a schematic image.
+UnitScope expects a netlist, not a schematic image.
 
 Example SPICE-style MOS line:
 
@@ -103,7 +103,7 @@ Supported parser features include:
 
 ## Schematic Images
 
-UnitWise does not directly analyze schematic images.
+UnitScope does not directly analyze schematic images.
 
 A schematic image usually does not contain reliable machine-readable information about:
 
@@ -117,7 +117,7 @@ A schematic image usually does not contain reliable machine-readable information
 Recommended flow:
 
 ```text
-EDA schematic -> export SPICE/CDL netlist -> analyze with UnitWise
+EDA schematic -> export SPICE/CDL netlist -> analyze with UnitScope
 ```
 
 Examples:
@@ -290,7 +290,7 @@ Possible detected units:
 
 ## Limitations
 
-UnitWise is a static analysis tool. It does not currently perform transistor-level simulation.
+UnitScope is a static analysis tool. It does not currently perform transistor-level simulation.
 
 It cannot fully verify:
 
@@ -305,11 +305,11 @@ It cannot fully verify:
 
 Some detections are heuristic and may produce false positives or miss advanced topology variants.
 
-Use UnitWise as a review assistant, not as a signoff tool.
+Use UnitScope as a review assistant, not as a signoff tool.
 
 ## Intended Users
 
-UnitWise is designed for:
+UnitScope is designed for:
 
 - analog IC designers
 - mixed-signal engineers
@@ -341,4 +341,4 @@ See `LICENSE`.
 
 ## Disclaimer
 
-UnitWise is intended to support engineering review. It does not guarantee circuit correctness, manufacturability, or signoff readiness. Always verify results with simulation, design review, and process-specific checks.
+UnitScope is intended to support engineering review. It does not guarantee circuit correctness, manufacturability, or signoff readiness. Always verify results with simulation, design review, and process-specific checks.
