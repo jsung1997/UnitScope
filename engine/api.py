@@ -4,6 +4,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Dict
 
+from engine.config import PdkConfig, load_pdk_config, set_active_pdk_config
 from engine.parser import parse_netlist
 from engine.units_detect import (
     detect_active_load_pairs,
@@ -19,10 +20,16 @@ from engine.dependency import build_unit_dependency_graph, reachable_units
 from engine.ranking import compute_scores, rank_weak_points
 
 
-def analyze_netlist(netlist_path: str) -> Dict[str, Any]:
+def analyze_netlist(
+    netlist_path: str,
+    pdk_config: PdkConfig | None = None,
+    pdk_config_path: str | None = None,
+) -> Dict[str, Any]:
     path = Path(netlist_path)
+    config = pdk_config or load_pdk_config(pdk_config_path)
+    set_active_pdk_config(config)
 
-    mos, pas = parse_netlist(path)
+    mos, pas = parse_netlist(path, config)
 
     units = []
     units += detect_diode_connected(mos)
@@ -78,6 +85,7 @@ def analyze_netlist(netlist_path: str) -> Dict[str, Any]:
 
     return {
         "netlist": str(path),
+        "pdk_config": config.to_dict(),
         "mos_count": len(mos),
         "passive_count": len(pas),
         "unit_type_counts": dict(Counter(u["type"] for u in unit_list)),

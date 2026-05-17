@@ -3,15 +3,142 @@ from __future__ import annotations
 import html
 import json
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QFileDialog,
     QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QTableWidget, QTableWidgetItem, QTextEdit, QMessageBox,
-    QToolButton, QAbstractItemView
+    QToolButton, QAbstractItemView, QDialog, QDialogButtonBox,
+    QFormLayout, QLineEdit
 )
 
 
+from engine.config import PdkConfig, load_pdk_config, normalize_list
 from engine.api import analyze_netlist
+
+
+def _list_text(values: list[str]) -> str:
+    return ", ".join(values)
+
+
+class PdkConfigDialog(QDialog):
+    FIELD_LABELS = {
+        "name": "Config name",
+        "nmos_models": "NMOS model patterns",
+        "pmos_models": "PMOS model patterns",
+        "supply_nets": "Supply net names",
+        "ground_nets": "Ground net names",
+        "width_params": "Width parameter names",
+        "length_params": "Length parameter names",
+        "multiplier_params": "Multiplier parameter names",
+        "finger_params": "Finger parameter names",
+        "fin_params": "FinFET parameter names",
+        "ignored_models": "Ignored model names",
+    }
+
+    def __init__(self, config: PdkConfig, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("PDK / Project Config")
+        self.resize(620, 520)
+        self.config = config
+        self.edits: dict[str, QLineEdit] = {}
+
+        root = QVBoxLayout(self)
+        intro = QLabel(
+            "Use comma-separated values. Model and net patterns are matched case-insensitively."
+        )
+        intro.setWordWrap(True)
+        root.addWidget(intro)
+
+        form = QFormLayout()
+        form.setLabelAlignment(Qt.AlignRight)
+        root.addLayout(form)
+
+        for field, label in self.FIELD_LABELS.items():
+            edit = QLineEdit()
+            value = getattr(config, field)
+            edit.setText(_list_text(value) if isinstance(value, list) else str(value))
+            self.edits[field] = edit
+            form.addRow(label, edit)
+
+        file_row = QHBoxLayout()
+        btn_load = QPushButton("Load JSON")
+        btn_load.clicked.connect(self.load_json)
+        file_row.addWidget(btn_load)
+        btn_save = QPushButton("Save JSON")
+        btn_save.clicked.connect(self.save_json)
+        file_row.addWidget(btn_save)
+        root.addLayout(file_row)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        root.addWidget(buttons)
+
+    def accept(self):
+        config = self.get_config()
+        required = {
+            "NMOS model patterns": config.nmos_models,
+            "PMOS model patterns": config.pmos_models,
+            "Supply net names": config.supply_nets,
+            "Ground net names": config.ground_nets,
+            "Width parameter names": config.width_params,
+            "Length parameter names": config.length_params,
+        }
+        missing = [name for name, values in required.items() if not values]
+        if missing:
+            QMessageBox.warning(
+                self,
+                "Invalid PDK config",
+                "These fields cannot be empty:\n\n" + "\n".join(missing),
+            )
+            return
+        self.config = config
+        super().accept()
+
+    def get_config(self) -> PdkConfig:
+        data = {"name": self.edits["name"].text().strip() or "Project PDK"}
+        for field in self.FIELD_LABELS:
+            if field == "name":
+                continue
+            data[field] = normalize_list(self.edits[field].text())
+        return PdkConfig.from_dict(data)
+
+    def load_json(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Load PDK Config",
+            "",
+            "JSON Files (*.json);;All Files (*)"
+        )
+        if not path:
+            return
+        try:
+            self.config = load_pdk_config(path)
+        except Exception as e:
+            QMessageBox.critical(self, "Config load error", str(e))
+            return
+        for field in self.FIELD_LABELS:
+            value = getattr(self.config, field)
+            self.edits[field].setText(_list_text(value) if isinstance(value, list) else str(value))
+
+    def save_json(self):
+        config = self.get_config()
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save PDK Config",
+            "unitwise_pdk_config.json",
+            "JSON Files (*.json);;All Files (*)"
+        )
+        if not path:
+            return
+        try:
+            config.save(path)
+        except Exception as e:
+            QMessageBox.critical(self, "Config save error", str(e))
+            return
 
 
 class MainWindow(QMainWindow):
@@ -23,6 +150,7 @@ class MainWindow(QMainWindow):
 
         self.netlist_path = None
         self.results = None
+        self.pdk_config = load_pdk_config()
 
         root = QWidget()
         root.setObjectName("Root")
@@ -66,6 +194,11 @@ class MainWindow(QMainWindow):
         btn_run.setObjectName("AccentButton")
         btn_run.clicked.connect(self.run_analysis)
         left.addWidget(btn_run)
+
+        btn_pdk = QPushButton("PDK / Project Config")
+        btn_pdk.setObjectName("SecondaryButton")
+        btn_pdk.clicked.connect(self.edit_pdk_config)
+        left.addWidget(btn_pdk)
 
         btn_export_json = QPushButton("Export JSON")
         btn_export_json.setObjectName("SecondaryButton")
@@ -135,10 +268,26 @@ class MainWindow(QMainWindow):
 
         self.apply_theme()
 
+    def edit_pdk_config(self):
+        dialog = PdkConfigDialog(self.pdk_config, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        self.pdk_config = dialog.get_config()
+        self.details.setPlainText(
+            f"PDK config active: {self.pdk_config.name}\n\n"
+            "Run analysis again to apply this configuration."
+        )
+
     def apply_theme(self):
         self.setStyleSheet("""
             QMainWindow {
                 background: #121212;
+            }
+            QDialog {
+                background: #1d1d1d;
+                color: #eeeeee;
+                font-family: "Segoe UI", Arial, sans-serif;
+                font-size: 13px;
             }
             QWidget#Root {
                 background: qlineargradient(
@@ -262,6 +411,16 @@ class MainWindow(QMainWindow):
                 font-size: 12px;
                 selection-background-color: rgba(255, 255, 255, 90);
             }
+            QLineEdit {
+                background: rgba(255, 255, 255, 24);
+                color: #f2f2f2;
+                border: 1px solid rgba(255, 255, 255, 58);
+                border-radius: 5px;
+                padding: 7px;
+            }
+            QLineEdit:focus {
+                border-color: rgba(255, 255, 255, 130);
+            }
             QScrollBar:vertical {
                 background: transparent;
                 width: 10px;
@@ -301,7 +460,7 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            self.results = analyze_netlist(self.netlist_path)
+            self.results = analyze_netlist(self.netlist_path, pdk_config=self.pdk_config)
         except Exception as e:
             QMessageBox.critical(self, "Analysis error", str(e))
             return
@@ -323,6 +482,7 @@ class MainWindow(QMainWindow):
             f"Parsed MOSFETs: {self.results['mos_count']}\n"
             f"Parsed passives: {self.results['passive_count']}\n"
             f"Detected units: {len(units)}\n\n"
+            f"PDK config: {self.results['pdk_config']['name']}\n\n"
             "Click a row to see explainable details.\n"
             "Click the (?) button for help on terms."
         )
@@ -436,6 +596,7 @@ class MainWindow(QMainWindow):
 <body>
   <h1>UnitWise Analog Weak-Point Report</h1>
   <p><b>Netlist:</b> {html.escape(self.results['netlist'])}</p>
+  <p><b>PDK config:</b> {html.escape(self.results.get('pdk_config', {}).get('name', 'unknown'))}</p>
   <p><b>MOSFETs:</b> {self.results['mos_count']} &nbsp; <b>Passives:</b> {self.results['passive_count']} &nbsp; <b>Units:</b> {len(self.results['units'])}</p>
   {''.join(rows)}
 </body>

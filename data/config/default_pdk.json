@@ -1,0 +1,13 @@
+{
+  "name": "Generic SPICE/CDL",
+  "nmos_models": ["nmos", "nch", "nfet", "nch_lvt", "nch_rvt"],
+  "pmos_models": ["pmos", "pch", "pfet", "pch_lvt", "pch_rvt"],
+  "supply_nets": ["vdd", "vdda", "avdd", "dvdd", "vcc", "vp"],
+  "ground_nets": ["0", "gnd", "ground", "vss", "vssa", "avss", "dvss", "vn"],
+  "width_params": ["w", "width"],
+  "length_params": ["l", "length"],
+  "multiplier_params": ["m", "mult"],
+  "finger_params": ["nf", "fingers"],
+  "fin_params": ["nfin", "fins"],
+  "ignored_models": []
+}

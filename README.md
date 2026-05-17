@@ -175,6 +175,30 @@ Reports can be exported as:
 - JSON
 - HTML
 
+## PDK / Project Configuration
+
+UnitWise includes a PDK/project configuration dialog in the desktop UI.
+
+The config controls how the analyzer interprets project-specific netlists:
+
+- NMOS model name patterns
+- PMOS model name patterns
+- supply net names
+- ground net names
+- width parameter names
+- length parameter names
+- multiplier parameter names
+- finger and FinFET parameter names
+- ignored model names
+
+Configs can be loaded from or saved to JSON files. The default config lives at:
+
+```text
+data/config/default_pdk.json
+```
+
+This is useful because real PDK netlists often use model and parameter names such as `nch_lvt`, `pch_rvt`, `nfin`, `nf`, `m`, `avdd`, `vssa`, or project-specific supply names.
+
 ## Running The Tool
 
 Install dependencies first. The main dependency is PySide6.

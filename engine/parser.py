@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+from .config import PdkConfig, active_pdk_config, set_active_pdk_config
 from .models import Mosfet, Passive
 from .utils import infer_mos_type, parse_spice_number
 
@@ -52,19 +53,19 @@ def _parse_params(tokens: List[str]) -> Dict[str, str]:
     return params
 
 
-def _param_float(params: Dict[str, str], *names: str) -> float | None:
+def _param_float(params: Dict[str, str], names: List[str]) -> float | None:
     for name in names:
         if name in params:
             return parse_spice_number(params[name])
     return None
 
 
-def _param_float_default(params: Dict[str, str], default: float, *names: str) -> float:
-    value = _param_float(params, *names)
+def _param_float_default(params: Dict[str, str], default: float, names: List[str]) -> float:
+    value = _param_float(params, names)
     return default if value is None else value
 
 
-def parse_netlist(path: Path) -> Tuple[Dict[str, Mosfet], Dict[str, Passive]]:
+def parse_netlist(path: Path, config: PdkConfig | None = None) -> Tuple[Dict[str, Mosfet], Dict[str, Passive]]:
     """
     SPICE/CDL-oriented parser for static structure analysis.
 
@@ -78,6 +79,8 @@ def parse_netlist(path: Path) -> Tuple[Dict[str, Mosfet], Dict[str, Passive]]:
 
     Ignores unsupported simulator directives and device classes.
     """
+    cfg = config or active_pdk_config()
+    set_active_pdk_config(cfg)
     mos: Dict[str, Mosfet] = {}
     pas: Dict[str, Passive] = {}
 
@@ -106,6 +109,8 @@ def parse_netlist(path: Path) -> Tuple[Dict[str, Mosfet], Dict[str, Passive]]:
             name = toks[0]
             d, g, s, b = toks[1], toks[2], toks[3], toks[4]
             model = toks[5]
+            if model.strip().lower() in cfg.ignored_models:
+                continue
             params = _parse_params(toks[6:])
             key = f"{subckt}/{name}" if subckt != "TOP" else name
             mos[key] = Mosfet(
@@ -116,11 +121,11 @@ def parse_netlist(path: Path) -> Tuple[Dict[str, Mosfet], Dict[str, Passive]]:
                 b=b,
                 model=model,
                 params=params,
-                device_type=infer_mos_type(model, name),
-                w=_param_float(params, "w", "width"),
-                l=_param_float(params, "l", "length"),
-                m=_param_float_default(params, 1.0, "m", "mult"),
-                nf=_param_float_default(params, 1.0, "nf", "fingers"),
+                device_type=infer_mos_type(model, name, cfg),
+                w=_param_float(params, cfg.width_params),
+                l=_param_float(params, cfg.length_params),
+                m=_param_float_default(params, 1.0, cfg.multiplier_params),
+                nf=_param_float_default(params, 1.0, cfg.finger_params + cfg.fin_params),
                 subckt=subckt,
                 line_no=line_no,
                 raw=line,

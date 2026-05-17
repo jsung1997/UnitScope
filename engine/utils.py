@@ -2,19 +2,28 @@ from __future__ import annotations
 
 import re
 
+from .config import PdkConfig, active_pdk_config
+
 
 def clip(x: float, lo: float = 0.0, hi: float = 1.0) -> float:
     return max(lo, min(hi, x))
 
 
-def is_ground(net: str) -> bool:
-    n = net.strip().lower()
-    return n in ("0", "gnd", "vss", "ground")
+def _matches_any(text: str, patterns: list[str]) -> bool:
+    value = text.strip().lower()
+    return any(value == p or value.startswith(p) for p in patterns)
 
 
-def looks_like_supply(net: str) -> bool:
+def is_ground(net: str, config: PdkConfig | None = None) -> bool:
+    cfg = config or active_pdk_config()
     n = net.strip().lower()
-    return n in ("vdd", "vcc", "vp", "vn", "vss", "gnd", "0") or n.startswith("vdd") or n.startswith("vss")
+    return _matches_any(n, cfg.ground_nets)
+
+
+def looks_like_supply(net: str, config: PdkConfig | None = None) -> bool:
+    cfg = config or active_pdk_config()
+    n = net.strip().lower()
+    return _matches_any(n, cfg.supply_nets) or _matches_any(n, cfg.ground_nets)
 
 
 def label_severity(sev: float) -> str:
@@ -61,11 +70,12 @@ def parse_spice_number(value: str) -> float | None:
     return base
 
 
-def infer_mos_type(model: str, name: str = "") -> str:
+def infer_mos_type(model: str, name: str = "", config: PdkConfig | None = None) -> str:
+    cfg = config or active_pdk_config()
     text = f"{name} {model}".lower()
-    if any(x in text for x in ("pmos", "pfet", "pch", "pch_", "p_")):
+    if any(x in text for x in cfg.pmos_models):
         return "pmos"
-    if any(x in text for x in ("nmos", "nfet", "nch", "nch_", "n_")):
+    if any(x in text for x in cfg.nmos_models):
         return "nmos"
     return "unknown"
 
