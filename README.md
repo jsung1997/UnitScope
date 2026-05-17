@@ -6,7 +6,19 @@ It parses an analog netlist, detects common circuit building blocks, runs explai
 
 The goal is not to replace SPICE simulation or expert analog review. UnitScope is intended to act as an early-stage static review assistant for analog IC designers, EDA engineers, and circuit reviewers.
 
+
+
+
+
+<img width="1305" height="857" alt="MVP" src="https://github.com/user-attachments/assets/1a3645d2-f881-43be-a266-e59af9fad72b" />
+
+
+
+
+
+
 ## What It Does
+
 
 UnitScope analyzes text-based netlists such as:
 
