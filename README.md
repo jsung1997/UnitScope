@@ -1,4 +1,4 @@
-# UnitScope (WIP)
+# UnitScope (DEMO)
 
 UnitScope is a local analog circuit analysis tool for SPICE/CDL-style netlists.
 
