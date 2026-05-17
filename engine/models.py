@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Set
+from typing import Dict, List, Optional, Set
 
 
 @dataclass(frozen=True)
@@ -16,6 +16,15 @@ class Mosfet:
     s: str
     b: str
     model: str
+    params: Dict[str, str] = field(default_factory=dict)
+    device_type: str = "unknown"  # "nmos", "pmos", or "unknown"
+    w: Optional[float] = None
+    l: Optional[float] = None
+    m: float = 1.0
+    nf: float = 1.0
+    subckt: str = "TOP"
+    line_no: int = 0
+    raw: str = ""
 
 
 @dataclass(frozen=True)
@@ -25,6 +34,11 @@ class Passive:
     n2: str
     value: str
     kind: str  # "R" or "C"
+    params: Dict[str, str] = field(default_factory=dict)
+    numeric_value: Optional[float] = None
+    subckt: str = "TOP"
+    line_no: int = 0
+    raw: str = ""
 
 
 @dataclass

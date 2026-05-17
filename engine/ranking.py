@@ -13,7 +13,11 @@ def unit_type_impact(unit_type: str) -> float:
     table = {
         "BiasNetwork": 1.00,
         "CurrentMirror": 0.90,
+        "TailCurrentSource": 0.85,
+        "CascodeStack": 0.80,
         "DiffPair": 0.70,
+        "ActiveLoadPair": 0.70,
+        "SourceFollower": 0.55,
         "DiodeConnected": 0.50,
     }
     return table.get(unit_type, 0.50)
@@ -23,7 +27,11 @@ def unit_importance_for_spread(unit_type: str) -> float:
     table = {
         "BiasNetwork": 1.0,
         "CurrentMirror": 0.9,
+        "TailCurrentSource": 0.85,
+        "CascodeStack": 0.75,
         "DiffPair": 0.6,
+        "ActiveLoadPair": 0.6,
+        "SourceFollower": 0.45,
         "DiodeConnected": 0.4,
     }
     return table.get(unit_type, 0.5)

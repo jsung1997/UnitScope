@@ -20,18 +20,20 @@ def build_unit_dependency_graph(units: List[Unit], mos: Dict[str, Mosfet]) -> Di
     deps: Dict[str, Set[str]] = {u.id: set() for u in units}
 
     for u in units:
-        if u.type != "CurrentMirror":
+        if u.type not in ("CurrentMirror", "BiasNetwork", "TailCurrentSource", "DiodeConnected"):
             continue
 
-        mirror_gate_nets = set()
+        bias_nets = set(u.nets)
         for dev in u.members:
             if dev in mos:
-                mirror_gate_nets.add(mos[dev].g)
+                bias_nets.add(mos[dev].g)
+                if mos[dev].g == mos[dev].d:
+                    bias_nets.add(mos[dev].g)
 
         for v in units:
             if v.id == u.id:
                 continue
-            if unit_gate_nets[v.id].intersection(mirror_gate_nets):
+            if unit_gate_nets[v.id].intersection(bias_nets):
                 deps[u.id].add(v.id)
 
     return deps

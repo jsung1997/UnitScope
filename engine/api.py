@@ -1,10 +1,20 @@
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 from typing import Any, Dict
 
 from engine.parser import parse_netlist
-from engine.units_detect import detect_diode_connected, detect_current_mirrors, detect_diff_pairs
+from engine.units_detect import (
+    detect_active_load_pairs,
+    detect_bias_networks,
+    detect_cascode_stacks,
+    detect_current_mirrors,
+    detect_diff_pairs,
+    detect_diode_connected,
+    detect_source_followers,
+    detect_tail_current_sources,
+)
 from engine.dependency import build_unit_dependency_graph, reachable_units
 from engine.ranking import compute_scores, rank_weak_points
 
@@ -18,6 +28,11 @@ def analyze_netlist(netlist_path: str) -> Dict[str, Any]:
     units += detect_diode_connected(mos)
     units += detect_current_mirrors(mos)
     units += detect_diff_pairs(mos)
+    units += detect_tail_current_sources(mos)
+    units += detect_cascode_stacks(mos)
+    units += detect_bias_networks(mos)
+    units += detect_active_load_pairs(mos)
+    units += detect_source_followers(mos)
 
     deps = build_unit_dependency_graph(units, mos)
 
@@ -27,6 +42,24 @@ def analyze_netlist(netlist_path: str) -> Dict[str, Any]:
     unit_list = []
     for u in ranked:
         reach = sorted(list(reachable_units(deps, u.id)))
+        member_details = []
+        for name in u.members:
+            if name not in mos:
+                continue
+            m = mos[name]
+            member_details.append({
+                "name": m.name,
+                "subckt": m.subckt,
+                "line_no": m.line_no,
+                "pins": {"d": m.d, "g": m.g, "s": m.s, "b": m.b},
+                "model": m.model,
+                "device_type": m.device_type,
+                "w": m.w,
+                "l": m.l,
+                "m": m.m,
+                "nf": m.nf,
+                "raw": m.raw,
+            })
         unit_list.append({
             "id": u.id,
             "type": u.type,
@@ -35,8 +68,10 @@ def analyze_netlist(netlist_path: str) -> Dict[str, Any]:
             "impact": round(u.impact, 3),
             "confidence": round(u.confidence, 3),
             "members": u.members,
+            "member_details": member_details,
             "why_detected": u.why_detected,
             "top_checks": sorted(u.checks, key=lambda x: x["severity"] * x["weight"], reverse=True)[:3],
+            "checks": sorted(u.checks, key=lambda x: x["severity"] * x["weight"], reverse=True),
             "explanation": u.explanation,
             "blast_radius": reach,
         })
@@ -45,5 +80,6 @@ def analyze_netlist(netlist_path: str) -> Dict[str, Any]:
         "netlist": str(path),
         "mos_count": len(mos),
         "passive_count": len(pas),
+        "unit_type_counts": dict(Counter(u["type"] for u in unit_list)),
         "units": unit_list,
     }
